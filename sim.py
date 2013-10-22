@@ -13,11 +13,14 @@ class Synth( object ):
     def __init__( self, durability, progress, quality, craftsmanship, control, rlvlDiff, cpMax ):
         # synth state and progress
         self._durability    = durability
+        self.durabilityDelta = 0
         self.durabilityMax  = durability
         self.durabilityLost = 0             # delta of cur and max, not total over entire course of the synth
         self.progress       = 0
         self.progressMax    = progress
+        self.progressDelta  = 0 #TODO
         self._quality       = 0
+        self.qualityDelta   = 0
         self.qualityMax     = quality
 
         self.step               = 0
@@ -29,6 +32,7 @@ class Synth( object ):
         # crafter stats
         self.cp             = cpMax
         self.cpMax          = cpMax
+        self.cpDelta        = 0 #TODO
         self.craftsmanship  = craftsmanship
         self.control        = control
         self.control_base   = control
@@ -48,7 +52,8 @@ class Synth( object ):
     def quality( self ): return self._quality
     @quality.setter
     def quality( self, val ):
-        if self.innerQuiet and val > self._quality:
+        self.qualityDelta = val - self._quality
+        if self.innerQuiet and self.qualityDelta > 0:
             self.innerQuietStacks += 1
 
         self._quality = val
@@ -57,7 +62,8 @@ class Synth( object ):
     def durability( self ): return self._durability
     @durability.setter
     def durability( self, val ):
-        if self.manipulationTTL > 0 and val < self._durability:
+        self.durabilityDelta = val - self._durability
+        if self.manipulationTTL > 0 and self.durabilityDelta < 0:
             self._durability += 10
         self._durability = val
 
@@ -75,13 +81,13 @@ class Synth( object ):
         self.updateCompletionState()
 
     def __str__( self ):
-        s = '#%d Last: %s (%s)\nCond: %s Comp: %s\nP %d / %d\nD %d / %d\nQ %d / %d\nCP %d / %d\n' % (
+        s = '#%d Last: %s (%s)\nCond: %s Comp: %s\nP %d / %d (%s)\nD %d / %d (%s)\nQ %d / %d (%s)\nCP %d / %d (%s)\n' % (
             self.step, self.lastAction, self.lastActionStatus,
             self.condition, self.completionState,
-            self.progress, self.progressMax,
-            self.durability, self.durabilityMax,
-            self.quality, self.qualityMax,
-            self.cp, self.cpMax,
+            self.progress, self.progressMax, self.progressDelta,
+            self.durability, self.durabilityMax, self.durabilityDelta,
+            self.quality, self.qualityMax, self.qualityDelta,
+            self.cp, self.cpMax, self.cpDelta,
             )
         #TODO add any buffs / on-going effects info to __str__
         return s
