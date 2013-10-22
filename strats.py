@@ -19,6 +19,10 @@ def static1( synth ):
     HastyTouch,
     BasicSynthesis,
     BasicSynthesis,
+
+    BasicSynthesis,
+    BasicSynthesis,
+    BasicSynthesis,
     ]
     return order[ synth.step ]
 
@@ -73,7 +77,8 @@ def smarter( synth ):
 
     # Use touches on good/excellent condition; favor the ones with better chance
     if synth.condition in [ 'Excellent', 'Good' ]:
-        if synth.stillPossibleToFinish( 1, BasicTouch().cpCost, synthSkill() ): return BasicTouch
+        if BasicTouch().canDo( synth ) \
+        and synth.stillPossibleToFinish( 1, BasicTouch().cpCost, synthSkill() ): return BasicTouch
         return HastyTouch
     else:
         # if we can, try something else while the condition isn't useful

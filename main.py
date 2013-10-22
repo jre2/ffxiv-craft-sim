@@ -5,7 +5,7 @@ import sim
 import strats
 
 def main():
-    synth = sim.mkSynth( 241, 100, 100, 0, 230 ) # change this
+    synth = sim.mkSynth( 'Brass Choker', 111, 90, 0, 255 ) # change this
 
     if len( sys.argv ) < 3:
         print 'Usage: python main.py strategyName numRuns [boolDebug]'

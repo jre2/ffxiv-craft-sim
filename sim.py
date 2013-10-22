@@ -34,13 +34,14 @@ class Synth( object ):
         self.control_base   = control
         self.rlvlDiff       = rlvlDiff
 
-        self.recalcStats()
-
         # buffs and on-going effects
         self.innerQuiet         = False
         self.innerQuietStacks   = 0
         self.manipulationTTL    = 0
         self.manipulationUsed   = False
+
+
+        self.recalcStats()
 
     @property
     def quality( self ): return self._quality
@@ -48,7 +49,6 @@ class Synth( object ):
     def quality( self, val ):
         if self.innerQuiet and val > self._quality:
             self.innerQuietStacks += 1
-            self.control *= 1.10
         self._quality = val
 
     @property
@@ -62,6 +62,8 @@ class Synth( object ):
     def recalcStats( self ):
         def calcQuality( rlvlDiff, control ): return (1-0.05* rlvlDiff) * (0.36 * control + 34)
         def calcProgress( rlvlDiff, craftsmanship ): return (1-0.05* rlvlDiff) * (0.21 * craftsmanship + 1.6)
+
+        self.control        = self.control_base + self.control_base * 0.20 * self.innerQuietStacks
 
         self.stdProgress    = calcProgress( self.rlvlDiff, self.craftsmanship )
         self.stdQuality     = calcQuality( self.rlvlDiff, self.control )
@@ -118,7 +120,7 @@ class Synth( object ):
     def score( self ):
         if self.completionState != 'SUCCESS': return 0
         score = 1   # for completion
-        score += 1. * self.quality / self.qualityMax    # for quality
+        score += 3. * self.quality / self.qualityMax    # for quality
         return score
 
     def maxStepsLeft( self, usingMastersMend=True, cp=None ):
@@ -169,10 +171,10 @@ class Synthesis( Skill ):
             return 'Failed'
 
 class Touch( Skill ):
-    def apply( self, synth ):
+    def apply( self, synth, efficiency=None ):
+        if efficiency is None: efficiency = self.efficiency
         synth.cp -= self.cpCost
         synth.durability -= self.durCost
-        efficiency = self.efficiency( synth ) if type( self.efficiency ) == types.FunctionType else self.efficiency
         if self.chance >= random():
             synth.quality += synth.stdQuality * efficiency * SynthConditionMult[ synth.condition ]
             return 'Success'
@@ -184,12 +186,17 @@ class ByregotsBlessing( Touch ):
         self.cpCost = 24
         self.durCost = 10
         self.chance = 0.90
-        self.efficiency = lambda synth: 1.00 + 0.20 * synth.innerQuietStacks
 
     def canDo( self, synth ):
         if synth.cp < self.cpCost: return False
         if not synth.innerQuiet: return False
         return True
+
+    def apply( self, synth ):
+        efficiency = 1.00 + 0.20 * synth.innerQuietStacks
+        r = Touch.apply( self, synth, efficiency )
+        InnerQuiet().remove( synth )
+        return r
 
 class Mend( Skill ):
     def apply( self, synth ):
@@ -213,6 +220,10 @@ class InnerQuiet( Skill ):
     def apply( self, synth ):
         synth.innerQuiet = True
 
+    def remove( self, synth ):
+        synth.innerQuiet = False
+        synth.innerQuietStacks = 0
+
 class Rumination( Skill ):
     def canDo( self, synth ):
         if not synth.innerQuiet: return False
@@ -224,9 +235,7 @@ class Rumination( Skill ):
 
     def apply( self, synth ):
         synth.cp += self.amtRestorable( synth )
-
-        synth.innerQuiet = False
-        synth.control = synth.control_base
+        InnerQuiet().remove( synth )
 
 class Manipulation( Skill ):
     def __init__( self ):
@@ -281,7 +290,8 @@ class MastersMend( Mend ):
 ################################################################################
 
 synthDb = {
-    241 : { 'name':'Brass Ingot', 'durability':40, 'progress':27, 'quality':300 },
+    'Brass Ingot' : { 'durability':40, 'progress':27, 'quality':300 },
+    'Brass Choker' : { 'durability':70, 'progress':75, 'quality':1090 },
 }
 
 def mkSynth( id, craftsmanship, control, rlvlDiff, cpMax ):
