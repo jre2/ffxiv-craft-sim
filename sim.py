@@ -39,6 +39,7 @@ class Synth( object ):
         self.innerQuietStacks   = 0
         self.manipulationTTL    = 0
         self.manipulationUsed   = False
+        self.greatStridesTTL    = 0
 
 
         self.recalcStats()
@@ -49,6 +50,7 @@ class Synth( object ):
     def quality( self, val ):
         if self.innerQuiet and val > self._quality:
             self.innerQuietStacks += 1
+
         self._quality = val
 
     @property
@@ -114,6 +116,7 @@ class Synth( object ):
         self.updateCondition() #TODO: handle skills that don't count as a step for the purposes of progressing condition
         self.step += 1
         if self.manipulationTTL > 0: self.manipulationTTL -= 1 # ticks away even for non-durability loss actions
+        if self.greatStridesTTL > 0: self.greatStridesTTL -= 1
         self.recalcStats()
         return True
 
@@ -175,8 +178,12 @@ class Touch( Skill ):
         if efficiency is None: efficiency = self.efficiency
         synth.cp -= self.cpCost
         synth.durability -= self.durCost
+        q = synth.stdQuality * efficiency * SynthConditionMult[ synth.condition ]
+        if synth.greatStridesTTL > 0:
+            q *= 2
+            synth.greatStridesTTL = 0
         if self.chance >= random():
-            synth.quality += synth.stdQuality * efficiency * SynthConditionMult[ synth.condition ]
+            synth.quality += q
             return 'Success'
         else:
             return 'Failed'
@@ -212,6 +219,16 @@ class TricksOfTheTrade( Skill ):
     def apply( self, synth ):
         synth.cp += 20
         #synth.durability -= 10 #TODO check if TotT costs durability
+
+class GreatStrides( Skill ):
+    def __init__( self ):
+        self.cpCost = 32
+        self.durCost = 10
+
+    def apply( self, synth ):
+        synth.cp -= self.cpCost
+        synth.durability -= self.durCost
+        synth.greatStridesTTL = 3
 
 class InnerQuiet( Skill ):
     def __init__( self ):
@@ -272,6 +289,13 @@ class BasicTouch( Touch ):
         self.cpCost = 18
         self.durCost = 10
 
+class StandardTouch( Touch ):
+    def __init__( self ):
+        self.chance = 0.80
+        self.efficiency = 1.25
+        self.cpCost = 32
+        self.durCost = 10
+
 class HastyTouch( Touch ):
     def __init__( self ):
         self.chance = 0.50
@@ -283,6 +307,11 @@ class MastersMend( Mend ):
     def __init__( self ):
         self.cpCost = 92
         self.durGain = 30
+
+class MastersMend2( Mend ):
+    def __init__( self ):
+        self.cpCost = 160
+        self.durGain = 60
 
 
 ################################################################################
